@@ -23,52 +23,42 @@ Network:
 - HOST (default 0.0.0.0)
 - FRONTEND_ORIGIN (recommended in prod; see CORS section)
 
-TLS (for HTTPS):
-- TLS_CERT_PATH (default: `./certs/cert.pem`)
-- TLS_KEY_PATH (default: `./certs/key.pem`)
-- TLS_WARN_ON_HTTP_FALLBACK (default: `true`) — logs a prominent warning if TLS is not available and server falls back to HTTP
+## HTTPS/TLS Termination (Important)
 
-## HTTPS/TLS
+This backend now serves HTTP only and does NOT start an HTTPS server.
+- HTTPS MUST be terminated at the reverse proxy/load balancer (e.g., Nginx/Traefik/Caddy/Cloud).
+- The proxy should forward traffic to the Node app over plain HTTP (http://0.0.0.0:3001).
+- Do not set TLS_CERT_PATH/TLS_KEY_PATH here; Node does not read TLS certs anymore.
 
-This backend prefers HTTPS on startup:
-- If both certificate and key files are present (`TLS_CERT_PATH`, `TLS_KEY_PATH`), the server listens with HTTPS on `PORT` (default 3001).
-- If certs are missing, the server falls back to HTTP on the same port. A warning is logged by default (can be controlled via `TLS_WARN_ON_HTTP_FALLBACK`).
-
-Default certificate locations:
-- `task_backend/certs/cert.pem`
-- `task_backend/certs/key.pem`
-
-You may override these via env vars:
+Proxy guidance (example with Nginx):
 ```
-TLS_CERT_PATH=/absolute/or/relative/path/to/fullchain.pem
-TLS_KEY_PATH=/absolute/or/relative/path/to/privkey.pem
+server {
+  listen 443 ssl http2;
+  server_name your-domain.example.com;
+
+  ssl_certificate     /etc/letsencrypt/live/your-domain/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/your-domain/privkey.pem;
+
+  location / {
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_pass http://127.0.0.1:3001;
+  }
+}
 ```
 
-Important:
-- Self-signed certificates are acceptable for local development only and will trigger browser warnings. Do NOT use self-signed certs in production.
-- For production, provision valid certificates from a trusted Certificate Authority (e.g., Let’s Encrypt).
+Why: Centralized TLS simplifies operations, avoids certificate permission issues in Node, and prevents 502s due to misconfigured in-app TLS.
 
-### Provisioning Production TLS (Let’s Encrypt)
+The server binds to `HOST` and `PORT`:
+- Always HTTP: `http://HOST:PORT` (defaults: 0.0.0.0:3001)
 
-Option A: Terminate TLS at a reverse proxy (recommended)
-- Put Nginx/Traefik/Caddy in front of the Node.js service.
-- Obtain TLS via Let’s Encrypt (e.g., Certbot for Nginx) and proxy traffic to the Node app over HTTP (localhost:3001).
-- Benefits: automatic renewal, centralized TLS, simpler Node configuration.
-
-Option B: Terminate TLS in Node.js
-- Use Certbot to obtain certificates on the host VM:
-  - Typical paths:
-    - `/etc/letsencrypt/live/<your-domain>/fullchain.pem`
-    - `/etc/letsencrypt/live/<your-domain>/privkey.pem`
-- Set:
+Frontend integration:
+- Your frontend must call the public HTTPS URL of the proxy. Example:
   ```
-  TLS_CERT_PATH=/etc/letsencrypt/live/<your-domain>/fullchain.pem
-  TLS_KEY_PATH=/etc/letsencrypt/live/<your-domain>/privkey.pem
+  API_BASE_URL=https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001
   ```
-- Ensure the Node process user has read permissions to these files.
-- Set up a renewal hook or restart process if needed after renewals (some setups can reload certs without restart).
-
-Note: Always ensure your frontend calls the API via HTTPS to avoid mixed content issues.
+- The proxy will forward to this backend over HTTP.
 
 ## CORS
 
@@ -106,22 +96,10 @@ On startup, the backend:
 You can verify DB connectivity via:
 - GET `/db/health` -> 200 OK when DB is reachable
 
-The server binds to `HOST` and `PORT`:
-- With TLS: `https://HOST:PORT`
-- Without TLS: `http://HOST:PORT` (fallback; not for production)
-
-Frontend integration:
-- Ensure the frontend API base URL uses HTTPS. Example:
-  ```
-  API_BASE_URL=https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001
-  ```
-- Using `http://...:3001` from a HTTPS page will be blocked by the browser as mixed content and show “Failed to fetch”.
-
 Quick checks:
 - Health (inside backend container):
   - HTTP: `curl -sI http://localhost:$PORT/ | head -n1`
-  - HTTPS (if TLS provisioned): `curl -sIk https://localhost:$PORT/ | head -n1`
-- Health (public):
+- Health (through proxy/public):
   - `curl -sIk https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001/ | head -n1`
 - Notes POST (inside backend): `curl -s -X POST http://localhost:$PORT/notes -H 'Content-Type: application/json' --data '{"user_id":1,"title":"Test"}' -i`
   Note: Will return 500 if the database is not configured; this confirms route reachability and that DB is required.
