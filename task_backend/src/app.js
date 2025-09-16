@@ -7,15 +7,34 @@ const swaggerSpec = require('../swagger');
 // Initialize express app
 const app = express();
 
-app.use(cors({
-  origin: '*',
+/**
+ * CORS configuration
+ * - Uses FRONTEND_ORIGIN env var if provided, otherwise allows the known deployed frontend,
+ *   and finally falls back to '*' for permissive development environments.
+ * - Applied BEFORE any routes or parsers, and handles preflight for all endpoints.
+ *
+ * To configure a strict origin, set FRONTEND_ORIGIN in the environment (see README).
+ */
+const DEFAULT_FRONTEND = 'https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3000';
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || DEFAULT_FRONTEND || '*';
+
+const corsOptions = {
+  origin: FRONTEND_ORIGIN === '*' ? '*' : [FRONTEND_ORIGIN, DEFAULT_FRONTEND],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: false, // no cookies used by this API; set true if auth cookies are added later
+  optionsSuccessStatus: 204,
+};
+
+// Apply CORS globally before any routes
+app.use(cors(corsOptions));
+// Explicitly handle preflight across all routes
+app.options('*', cors(corsOptions));
+
 app.set('trust proxy', true);
 app.use('/docs', swaggerUi.serve, (req, res, next) => {
   const host = req.get('host');           // may or may not include port
-  let protocol = req.protocol;          // http or https
+  let protocol = req.protocol;            // http or https
 
   const actualPort = req.socket.localPort;
   const hasPort = host.includes(':');
