@@ -1,0 +1,15 @@
+Command timestamps: $(date -Is)
+
+Local:
+- curl http://localhost:3001/notes -> 401
+- curl http://localhost:3001/ -> 200
+- curl http://localhost:3001/db/health -> 500
+
+Public (proxy):
+- curl https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001/notes -k -> 401
+- curl https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001/ -k -> 200
+
+Backend status summary:
+- Listening on http://0.0.0.0:3001 (running)
+- DB connectivity: failing with "Access denied for user ''@'localhost' (using password: NO)" (needs valid MYSQL_URL or MYSQL_* envs)
+- JWT: auto-generated dev secret present
