@@ -4,6 +4,7 @@ const usersController = require('../controllers/users');
 const tagsController = require('../controllers/tags');
 const notesController = require('../controllers/notes');
 const authController = require('../controllers/auth');
+const healthService = require('../services/health');
 const { checkConnection } = require('../db/bootstrap');
 const { auth } = require('../middleware');
 
@@ -81,6 +82,56 @@ router.get('/db/health', async (req, res) => {
   const result = await checkConnection();
   if (result.ok) return res.status(200).json({ ok: true });
   return res.status(500).json({ ok: false, error: result.error });
+});
+
+/**
+ * @swagger
+ * /init/status:
+ *   get:
+ *     summary: Initialization and configuration status
+ *     description: >
+ *       Returns actionable diagnostics about JWT secret, MySQL environment, and DB connectivity needed for /login to work.
+ *       Use this endpoint from the frontend to display troubleshooting hints when authentication is not available.
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Initialization status payload
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status: { type: string, enum: [ready, blocked] }
+ *                 environment: { type: string }
+ *                 timestamp: { type: string, format: date-time }
+ *                 checks:
+ *                   type: object
+ *                   properties:
+ *                     jwtSecret:
+ *                       type: object
+ *                       properties:
+ *                         ok: { type: boolean }
+ *                     mysqlEnv:
+ *                       type: object
+ *                       properties:
+ *                         ok: { type: boolean }
+ *                         missing:
+ *                           type: array
+ *                           items: { type: string }
+ *                     dbConnectivity:
+ *                       type: object
+ *                       properties:
+ *                         ok: { type: boolean }
+ *                         error: { type: string, nullable: true }
+ *                 canLogin: { type: boolean }
+ *                 allowStartWithoutDb: { type: boolean }
+ *                 hints:
+ *                   type: array
+ *                   items: { type: string }
+ */
+router.get('/init/status', (req, res) => {
+  const payload = healthService.getInitStatus(req.app);
+  return res.status(200).json(payload);
 });
 
 /**
