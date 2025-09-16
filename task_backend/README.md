@@ -151,3 +151,23 @@ Status and priority enums:
 Notes:
 - All configuration is via environment variables.
 - Database schema must exist (see task_database).
+
+Troubleshooting DB “Access denied” on startup
+- Symptom in logs:
+  Error: Access denied for user ''@'localhost' (using password: NO)
+- Cause:
+  MYSQL_URL or discrete MYSQL_* variables are missing/malformed, so the driver falls back to defaults (user empty, host localhost, no password).
+- Fix:
+  1) Set a valid MYSQL_URL, e.g.:
+     MYSQL_URL=mysql://USER:PASSWORD@DB_HOST:3306/DB_NAME
+     (Ensure special characters in password are URL-encoded.)
+  2) Or set discrete variables:
+     MYSQL_HOST=DB_HOST
+     MYSQL_PORT=3306
+     MYSQL_USER=USER
+     MYSQL_PASSWORD=PASSWORD
+     MYSQL_DB=DB_NAME
+  3) Restart the backend. Verify:
+     curl -sI http://localhost:$PORT/db/health | head -n1 -> HTTP/1.1 200 OK
+- Note:
+  An empty .env file provides no values; ensure your environment (container/orchestrator) actually injects the DB variables.
