@@ -36,6 +36,12 @@ function validateEnv() {
     if (process.env.MYSQL_PASSWORD === undefined) missing.push('MYSQL_PASSWORD');
     if (!process.env.MYSQL_DB && !process.env.MYSQL_DATABASE) missing.push('MYSQL_DB|MYSQL_DATABASE');
   }
+  if (missing.length) {
+    console.warn('[DB] Environment check: missing keys ->', missing.join(', '));
+    console.warn('[DB] Set MYSQL_URL or discrete MYSQL_* variables. See task_backend/.env.example for guidance.');
+  } else {
+    console.log('[DB] Environment check: MySQL variables present (or MYSQL_URL provided).');
+  }
   return missing;
 }
 

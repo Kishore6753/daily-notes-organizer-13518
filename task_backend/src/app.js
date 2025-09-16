@@ -12,6 +12,12 @@ const swaggerSpec = require('../swagger');
  */
 const app = express();
 
+// Early config diagnostics (defense-in-depth; server.js already ensures secret in dev)
+if (!process.env.JWT_SECRET) {
+  // Avoid crashing here; server.js controls strictness based on NODE_ENV.
+  console.warn('[Config] JWT_SECRET is not set at app init. /login and authenticated routes will fail until configured.');
+}
+
 /**
  * CORS configuration
  * - Uses FRONTEND_ORIGIN env var if provided, otherwise allows the known deployed frontend.
