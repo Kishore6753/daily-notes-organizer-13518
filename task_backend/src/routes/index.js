@@ -355,6 +355,9 @@ router.delete('/tags/:id', tagsController.remove.bind(tagsController));
  *               content: { type: string }
  *               status: { type: string, enum: [not_started, in_progress, completed] }
  *               priority: { type: string, enum: [low, moderate, high] }
+ *               recurrence_pattern: { type: string, enum: [none, daily, weekly, monthly], description: "Default none" }
+ *               recurrence_start_date: { type: string, format: date, description: "YYYY-MM-DD" }
+ *               recurrence_end_date: { type: string, format: date, description: "YYYY-MM-DD or null" }
  *               tags:
  *                 type: array
  *                 items: { type: integer }
@@ -402,6 +405,9 @@ router.post('/notes', auth, notesController.create.bind(notesController));
  *               status: { type: string, enum: [not_started, in_progress, completed] }
  *               priority: { type: string, enum: [low, moderate, high] }
  *               archived: { type: boolean }
+ *               recurrence_pattern: { type: string, enum: [none, daily, weekly, monthly] }
+ *               recurrence_start_date: { type: string, format: date }
+ *               recurrence_end_date: { type: string, format: date }
  *               tags:
  *                 type: array
  *                 items: { type: integer }

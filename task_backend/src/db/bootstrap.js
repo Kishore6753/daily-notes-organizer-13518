@@ -107,11 +107,32 @@ async function ensureSchema() {
       status ENUM('not_started', 'in_progress', 'completed') NOT NULL DEFAULT 'not_started',
       priority ENUM('low', 'moderate', 'high') NOT NULL DEFAULT 'low',
       archived TINYINT(1) NOT NULL DEFAULT 0,
+      -- Recurrence fields
+      recurrence_pattern ENUM('none','daily','weekly','monthly') NOT NULL DEFAULT 'none',
+      recurrence_start_date DATE NULL,
+      recurrence_end_date DATE NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       CONSTRAINT fk_notes_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
+
+  // In case the table already existed without recurrence fields, attempt to add them idempotently.
+  try {
+    await query('ALTER TABLE notes ADD COLUMN recurrence_pattern ENUM(\'none\',\'daily\',\'weekly\',\'monthly\') NOT NULL DEFAULT \'none\'', []);
+  } catch (e) {
+    // ignore if already exists
+  }
+  try {
+    await query('ALTER TABLE notes ADD COLUMN recurrence_start_date DATE NULL', []);
+  } catch (e) {
+    // ignore if already exists
+  }
+  try {
+    await query('ALTER TABLE notes ADD COLUMN recurrence_end_date DATE NULL', []);
+  } catch (e) {
+    // ignore if already exists
+  }
 
   // Create note_tags (junction)
   await query(`

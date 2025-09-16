@@ -4,6 +4,23 @@ const Notes = require('../models/notes');
 
 const ALLOWED_STATUS = new Set(['not_started', 'in_progress', 'completed']);
 const ALLOWED_PRIORITY = new Set(['low', 'moderate', 'high']);
+const ALLOWED_RECURRENCE = new Set(['none', 'daily', 'weekly', 'monthly']);
+
+function normalizeDateOrNull(value, fieldName) {
+  if (value === undefined || value === null || value === '') return null;
+  // Accept ISO-like strings 'YYYY-MM-DD' or full ISO and store date part
+  const d = new Date(value);
+  if (isNaN(d.getTime())) {
+    const err = new Error(`Invalid ${fieldName} date`);
+    err.status = 400;
+    throw err;
+  }
+  // Format as YYYY-MM-DD for MySQL DATE
+  const yyyy = d.getUTCFullYear();
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
 
 function ensureEnum(value, allowed, fieldName) {
   if (value === undefined) return undefined;
@@ -36,7 +53,15 @@ const NotesService = {
       status: ensureEnum(data.status || 'not_started', ALLOWED_STATUS, 'status'),
       priority: ensureEnum(data.priority || 'low', ALLOWED_PRIORITY, 'priority'),
       tags: Array.isArray(data.tags) ? data.tags.map((t) => Number(t)).filter(Number.isFinite) : [],
+      recurrence_pattern: ensureEnum(data.recurrence_pattern || 'none', ALLOWED_RECURRENCE, 'recurrence_pattern'),
+      recurrence_start_date: normalizeDateOrNull(data.recurrence_start_date, 'recurrence_start_date'),
+      recurrence_end_date: normalizeDateOrNull(data.recurrence_end_date, 'recurrence_end_date'),
     };
+
+    // Placeholder: future logic to schedule next occurrences or reminders
+    // if (payload.recurrence_pattern !== 'none') {
+    //   // Compute next occurrence date, enqueue reminder jobs, etc.
+    // }
     return Notes.create(payload);
   },
 
@@ -101,6 +126,15 @@ const NotesService = {
     if (data.status !== undefined) payload.status = ensureEnum(data.status, ALLOWED_STATUS, 'status');
     if (data.priority !== undefined) payload.priority = ensureEnum(data.priority, ALLOWED_PRIORITY, 'priority');
     if (data.archived !== undefined) payload.archived = !!data.archived;
+    if (data.recurrence_pattern !== undefined) {
+      payload.recurrence_pattern = ensureEnum(data.recurrence_pattern, ALLOWED_RECURRENCE, 'recurrence_pattern');
+    }
+    if (data.recurrence_start_date !== undefined) {
+      payload.recurrence_start_date = normalizeDateOrNull(data.recurrence_start_date, 'recurrence_start_date');
+    }
+    if (data.recurrence_end_date !== undefined) {
+      payload.recurrence_end_date = normalizeDateOrNull(data.recurrence_end_date, 'recurrence_end_date');
+    }
     if (data.tags !== undefined) {
       if (!Array.isArray(data.tags)) {
         const err = new Error('tags must be an array of tag IDs');

@@ -30,14 +30,17 @@ const NotesModel = {
   async create(data) {
     return transaction(async (conn) => {
       const [result] = await conn.query(
-        `INSERT INTO notes (user_id, title, content, status, priority)
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO notes (user_id, title, content, status, priority, recurrence_pattern, recurrence_start_date, recurrence_end_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           data.user_id,
           data.title,
           data.content || '',
           data.status || 'not_started',
           data.priority || 'low',
+          data.recurrence_pattern || 'none',
+          data.recurrence_start_date || null,
+          data.recurrence_end_date || null,
         ]
       );
       const noteId = result.insertId;
@@ -48,7 +51,9 @@ const NotesModel = {
       }
 
       const [rows] = await conn.query(
-        `SELECT id, user_id, title, content, status, priority, archived, created_at, updated_at
+        `SELECT id, user_id, title, content, status, priority, archived,
+                recurrence_pattern, recurrence_start_date, recurrence_end_date,
+                created_at, updated_at
          FROM notes WHERE id = ?`,
         [noteId]
       );
@@ -63,7 +68,9 @@ const NotesModel = {
    */
   async getById(id) {
     const { rows } = await query(
-      `SELECT id, user_id, title, content, status, priority, archived, created_at, updated_at
+      `SELECT id, user_id, title, content, status, priority, archived,
+              recurrence_pattern, recurrence_start_date, recurrence_end_date,
+              created_at, updated_at
        FROM notes WHERE id = ?`,
       [id]
     );
@@ -135,7 +142,9 @@ const NotesModel = {
         : `ORDER BY n.${sortBy} ${sortDir}, n.created_at DESC`;
 
     const sql = `
-      SELECT n.id, n.user_id, n.title, n.content, n.status, n.priority, n.archived, n.created_at, n.updated_at
+      SELECT n.id, n.user_id, n.title, n.content, n.status, n.priority, n.archived,
+             n.recurrence_pattern, n.recurrence_start_date, n.recurrence_end_date,
+             n.created_at, n.updated_at
       FROM notes n
       ${join}
       ${whereSql}
@@ -181,6 +190,9 @@ const NotesModel = {
       if (data.status !== undefined) { fields.push('status = ?'); params.push(data.status); }
       if (data.priority !== undefined) { fields.push('priority = ?'); params.push(data.priority); }
       if (data.archived !== undefined) { fields.push('archived = ?'); params.push(data.archived ? 1 : 0); }
+      if (data.recurrence_pattern !== undefined) { fields.push('recurrence_pattern = ?'); params.push(data.recurrence_pattern); }
+      if (data.recurrence_start_date !== undefined) { fields.push('recurrence_start_date = ?'); params.push(data.recurrence_start_date || null); }
+      if (data.recurrence_end_date !== undefined) { fields.push('recurrence_end_date = ?'); params.push(data.recurrence_end_date || null); }
 
       if (fields.length) {
         await conn.query(`UPDATE notes SET ${fields.join(', ')}, updated_at = NOW() WHERE id = ?`, [...params, id]);
@@ -195,7 +207,9 @@ const NotesModel = {
       }
 
       const [rows] = await conn.query(
-        `SELECT id, user_id, title, content, status, priority, archived, created_at, updated_at
+        `SELECT id, user_id, title, content, status, priority, archived,
+                recurrence_pattern, recurrence_start_date, recurrence_end_date,
+                created_at, updated_at
          FROM notes WHERE id = ?`,
         [id]
       );

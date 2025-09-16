@@ -29,6 +29,9 @@ const options = {
             archived: { type: 'boolean' },
             created_at: { type: 'string', format: 'date-time' },
             updated_at: { type: 'string', format: 'date-time' },
+            recurrence_pattern: { type: 'string', enum: ['none','daily','weekly','monthly'] },
+            recurrence_start_date: { type: 'string', format: 'date', description: 'YYYY-MM-DD' },
+            recurrence_end_date: { type: 'string', format: 'date', description: 'YYYY-MM-DD or null' },
             tags: {
               type: 'array',
               items: {

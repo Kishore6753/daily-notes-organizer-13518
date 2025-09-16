@@ -49,6 +49,30 @@ Status and priority enums:
 - status: not_started | in_progress | completed
 - priority: low | moderate | high
 
+Recurrence fields (notes):
+- recurrence_pattern: none | daily | weekly | monthly (default none)
+- recurrence_start_date: YYYY-MM-DD (optional; recommended when recurrence_pattern != none)
+- recurrence_end_date: YYYY-MM-DD (optional; if set, recurrence stops after this date)
+
+Notes create/update payload examples:
+- POST /notes
+  {
+    "title": "Take vitamins",
+    "priority": "moderate",
+    "recurrence_pattern": "daily",
+    "recurrence_start_date": "2025-09-16"
+  }
+
+- PUT /notes/{id}
+  {
+    "recurrence_pattern": "weekly",
+    "recurrence_start_date": "2025-09-17",
+    "recurrence_end_date": "2025-12-31"
+  }
+
+Future behavior:
+- The API stores recurrence configuration. Placeholder hooks exist for generating reminders or future instances; scheduling/expansion can be added later.
+
 Notes:
 - All configuration is via environment variables.
 - Database schema must exist (see task_database).
