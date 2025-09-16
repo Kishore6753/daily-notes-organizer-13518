@@ -1,1 +1,3 @@
-# daily-notes-organizer-13518
+# Project Repository
+
+This is the initial README file for the project.
