@@ -18,9 +18,10 @@ function ensureEnum(value, allowed, fieldName) {
 const NotesService = {
   // PUBLIC_INTERFACE
   async create(data) {
+    // user_id is enforced by controller from JWT; ignore any provided user_id to prevent spoofing
     if (!data || typeof data.user_id !== 'number') {
-      const err = new Error('user_id is required');
-      err.status = 400;
+      const err = new Error('Unauthorized: missing user context');
+      err.status = 401;
       throw err;
     }
     if (!data.title || typeof data.title !== 'string' || !data.title.trim()) {

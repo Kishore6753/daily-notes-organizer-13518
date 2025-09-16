@@ -9,6 +9,13 @@ const options = {
       description: 'REST API for managing users, notes, tags, and search/filtering.',
     },
     components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+        },
+      },
       schemas: {
         Note: {
           type: 'object',

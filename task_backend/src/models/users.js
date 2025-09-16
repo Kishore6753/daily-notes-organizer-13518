@@ -3,9 +3,10 @@
 const { query } = require('../db');
 
 /**
- * Users model with basic CRUD operations.
- * Schema assumed from provided DB step:
- * users(id PK AI, name, email UNIQUE, created_at TIMESTAMP DEFAULT NOW)
+ * Users model with CRUD and auth helpers.
+ * Schema:
+ * - users(id PK AI, name, email UNIQUE, created_at)
+ * - users_auth(user_id PK FK -> users.id, password_hash TEXT)
  */
 const UsersModel = {
   // PUBLIC_INTERFACE
@@ -34,12 +35,41 @@ const UsersModel = {
 
   // PUBLIC_INTERFACE
   /**
-   * Get user by email
+   * Get user by email (public safe fields)
    * @param {string} email
    */
   async getByEmail(email) {
     const { rows } = await query('SELECT id, name, email, created_at FROM users WHERE email = ?', [email]);
     return rows[0] || null;
+  },
+
+  /**
+   * Internal: get full user row by email (same as public now).
+   */
+  async getByEmailInternal(email) {
+    const { rows } = await query('SELECT id, name, email, created_at FROM users WHERE email = ?', [email]);
+    return rows[0] || null;
+  },
+
+  /**
+   * Internal: set password hash in users_auth (upsert).
+   * @param {number} userId
+   * @param {string} passwordHash
+   */
+  async setPasswordHash(userId, passwordHash) {
+    await query(
+      'INSERT INTO users_auth (user_id, password_hash) VALUES (?, ?) ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash)',
+      [userId, passwordHash]
+    );
+  },
+
+  /**
+   * Internal: get password hash by user id
+   * @param {number} userId
+   */
+  async getPasswordHash(userId) {
+    const { rows } = await query('SELECT password_hash FROM users_auth WHERE user_id = ?', [userId]);
+    return rows[0]?.password_hash || null;
   },
 
   // PUBLIC_INTERFACE

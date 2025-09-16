@@ -22,6 +22,9 @@ Protocol model:
 
 Endpoints (summary):
 - GET /               -> Health
+- Auth
+  - POST /signup      -> Create account (name, email, password)
+  - POST /login       -> Login (email, password), returns JWT
 - Users
   - GET /users
   - POST /users
@@ -34,8 +37,9 @@ Endpoints (summary):
   - GET /tags/:id
   - PUT /tags/:id
   - DELETE /tags/:id
-- Notes
-  - GET /notes?user_id=&tag_ids=1,2&status=&priority=&archived=&q=&page=&pageSize=
+- Notes (Require Authorization: Bearer <token>)
+  - GET /notes?tag_ids=1,2&status=&priority=&archived=&q=&page=&pageSize=
+    - user is inferred from JWT; user_id query param is ignored for security
   - POST /notes
   - GET /notes/:id
   - PUT /notes/:id

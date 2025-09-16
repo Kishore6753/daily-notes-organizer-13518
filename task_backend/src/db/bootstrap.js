@@ -87,6 +87,15 @@ async function ensureSchema() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
   `);
 
+  // Credentials storage (separate table from users profile)
+  await query(`
+    CREATE TABLE IF NOT EXISTS users_auth (
+      user_id INT NOT NULL PRIMARY KEY,
+      password_hash TEXT NOT NULL,
+      CONSTRAINT fk_users_auth_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+  `);
+
   // Create notes
   // Use ENUMs aligned with services/notes.js ALLOWED_* values
   await query(`

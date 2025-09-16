@@ -23,6 +23,10 @@ Network:
 - HOST (default 0.0.0.0)
 - FRONTEND_ORIGIN (recommended in prod; see CORS section)
 
+Authentication (JWT):
+- JWT_SECRET (required): secret key to sign JWT tokens.
+- JWT_EXPIRES_IN (optional, default `7d`): token lifetime, e.g., `1h`, `7d`.
+
 ## HTTPS/TLS Termination (Important)
 
 This backend serves HTTP only and does NOT start an HTTPS server.

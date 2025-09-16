@@ -3,15 +3,25 @@ const healthController = require('../controllers/health');
 const usersController = require('../controllers/users');
 const tagsController = require('../controllers/tags');
 const notesController = require('../controllers/notes');
+const authController = require('../controllers/auth');
 const { checkConnection } = require('../db/bootstrap');
+const { auth } = require('../middleware');
 
 const router = express.Router();
 
 /**
  * @swagger
+ * components:
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
  * tags:
  *   - name: Health
  *     description: Service health checks
+ *   - name: Auth
+ *     description: Signup and login
  *   - name: Users
  *     description: Manage users
  *   - name: Tags
@@ -72,6 +82,61 @@ router.get('/db/health', async (req, res) => {
   if (result.ok) return res.status(200).json({ ok: true });
   return res.status(500).json({ ok: false, error: result.error });
 });
+
+/**
+ * @swagger
+ * /signup:
+ *   post:
+ *     summary: User signup
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name, email, password]
+ *             properties:
+ *               name: { type: string, description: "User name" }
+ *               email: { type: string, description: "Unique email" }
+ *               password: { type: string, format: password, minLength: 6 }
+ *     responses:
+ *       201: { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }
+ *       400: { description: Validation error }
+ *       409: { description: Email already registered }
+ */
+router.post('/signup', authController.signup.bind(authController));
+
+/**
+ * @swagger
+ * /login:
+ *   post:
+ *     summary: User login
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email, password]
+ *             properties:
+ *               email: { type: string }
+ *               password: { type: string, format: password }
+ *     responses:
+ *       200:
+ *         description: JWT issued
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token: { type: string, description: "JWT token" }
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       401: { description: Invalid credentials }
+ */
+router.post('/login', authController.login.bind(authController));
 
 /**
  * @swagger
@@ -237,13 +302,11 @@ router.delete('/tags/:id', tagsController.remove.bind(tagsController));
  * @swagger
  * /notes:
  *   get:
+ *     security: [{ bearerAuth: [] }]
  *     summary: List/search notes
- *     description: Filter by user_id, tag_ids (comma-separated), status, priority, archived, q (search by title/content)
+ *     description: Filter by tag_ids (comma-separated), status, priority, archived, q (search by title/content). user_id is derived from JWT.
  *     tags: [Notes]
  *     parameters:
- *       - in: query
- *         name: user_id
- *         schema: { type: integer }
  *       - in: query
  *         name: tag_ids
  *         schema: { type: string, example: "1,2,3" }
@@ -275,7 +338,9 @@ router.delete('/tags/:id', tagsController.remove.bind(tagsController));
  *         description: Sort direction (default DESC)
  *     responses:
  *       200: { description: Notes list }
+ *       401: { description: Unauthorized }
  *   post:
+ *     security: [{ bearerAuth: [] }]
  *     summary: Create note
  *     tags: [Notes]
  *     requestBody:
@@ -284,9 +349,8 @@ router.delete('/tags/:id', tagsController.remove.bind(tagsController));
  *         application/json:
  *           schema:
  *             type: object
- *             required: [user_id, title]
+ *             required: [title]
  *             properties:
- *               user_id: { type: integer }
  *               title: { type: string }
  *               content: { type: string }
  *               status: { type: string, enum: [not_started, in_progress, completed] }
@@ -296,14 +360,16 @@ router.delete('/tags/:id', tagsController.remove.bind(tagsController));
  *                 items: { type: integer }
  *     responses:
  *       201: { description: Created }
+ *       401: { description: Unauthorized }
  */
-router.get('/notes', notesController.list.bind(notesController));
-router.post('/notes', notesController.create.bind(notesController));
+router.get('/notes', auth, notesController.list.bind(notesController));
+router.post('/notes', auth, notesController.create.bind(notesController));
 
 /**
  * @swagger
  * /notes/{id}:
  *   get:
+ *     security: [{ bearerAuth: [] }]
  *     summary: Get note
  *     tags: [Notes]
  *     parameters:
@@ -311,7 +377,12 @@ router.post('/notes', notesController.create.bind(notesController));
  *         name: id
  *         required: true
  *         schema: { type: integer }
+ *     responses:
+ *       200: { description: OK }
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
  *   put:
+ *     security: [{ bearerAuth: [] }]
  *     summary: Update note
  *     tags: [Notes]
  *     parameters:
@@ -334,7 +405,12 @@ router.post('/notes', notesController.create.bind(notesController));
  *               tags:
  *                 type: array
  *                 items: { type: integer }
+ *     responses:
+ *       200: { description: Updated }
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
  *   delete:
+ *     security: [{ bearerAuth: [] }]
  *     summary: Delete note
  *     tags: [Notes]
  *     parameters:
@@ -342,9 +418,13 @@ router.post('/notes', notesController.create.bind(notesController));
  *         name: id
  *         required: true
  *         schema: { type: integer }
+ *     responses:
+ *       200: { description: Deleted }
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
  */
-router.get('/notes/:id', notesController.get.bind(notesController));
-router.put('/notes/:id', notesController.update.bind(notesController));
-router.delete('/notes/:id', notesController.remove.bind(notesController));
+router.get('/notes/:id', auth, notesController.get.bind(notesController));
+router.put('/notes/:id', auth, notesController.update.bind(notesController));
+router.delete('/notes/:id', auth, notesController.remove.bind(notesController));
 
 module.exports = router;
