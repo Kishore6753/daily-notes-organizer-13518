@@ -13,8 +13,12 @@ Environment variables (provided by orchestrator; do not hardcode):
   - MYSQL_USER
   - MYSQL_PASSWORD
   - MYSQL_DB (or MYSQL_DATABASE)
-- PORT (default 3000)
+- PORT (default 3001)
 - HOST (default 0.0.0.0)
+
+Protocol model:
+- The API listens on HTTP only (no in-app TLS).
+- Public HTTPS is terminated by a reverse proxy or cloud and forwarded to HTTP upstream.
 
 Endpoints (summary):
 - GET /               -> Health
@@ -37,7 +41,7 @@ Endpoints (summary):
   - PUT /notes/:id
   - DELETE /notes/:id
 
-Status: and priority enums:
+Status and priority enums:
 - status: not_started | in_progress | completed
 - priority: low | moderate | high
 

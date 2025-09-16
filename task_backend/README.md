@@ -25,19 +25,23 @@ Network:
 
 ## HTTPS/TLS Termination (Important)
 
-This backend now serves HTTP only and does NOT start an HTTPS server.
+This backend serves HTTP only and does NOT start an HTTPS server.
+
 - HTTPS MUST be terminated at the reverse proxy/load balancer (e.g., Nginx/Traefik/Caddy/Cloud).
 - The proxy should forward traffic to the Node app over plain HTTP (http://0.0.0.0:3001).
-- Do not set TLS_CERT_PATH/TLS_KEY_PATH here; Node does not read TLS certs anymore.
+- Do not set TLS_CERT_PATH/TLS_KEY_PATH here; Node does not read TLS certs.
+- If you enable TLS inside Node while the proxy expects HTTP, you will see 502 Bad Gateway from the proxy.
 
-Proxy guidance (example with Nginx):
-```
+Sample Nginx (TLS termination with HTTP upstream):
 server {
   listen 443 ssl http2;
   server_name your-domain.example.com;
 
   ssl_certificate     /etc/letsencrypt/live/your-domain/fullchain.pem;
   ssl_certificate_key /etc/letsencrypt/live/your-domain/privkey.pem;
+
+  # Optional security headers
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
   location / {
     proxy_set_header Host $host;
@@ -46,18 +50,18 @@ server {
     proxy_pass http://127.0.0.1:3001;
   }
 }
-```
 
-Why: Centralized TLS simplifies operations, avoids certificate permission issues in Node, and prevents 502s due to misconfigured in-app TLS.
+Why this matters:
+- Centralized TLS simplifies ops and certificate rotation.
+- Avoids filesystem/permission issues reading certs in Node.
+- Prevents persistent 502s from protocol mismatch and “Failed to fetch” due to mixed content.
 
 The server binds to `HOST` and `PORT`:
 - Always HTTP: `http://HOST:PORT` (defaults: 0.0.0.0:3001)
 
 Frontend integration:
 - Your frontend must call the public HTTPS URL of the proxy. Example:
-  ```
-  API_BASE_URL=https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001
-  ```
+  REACT_APP_API_BASE=https://your-domain.example.com
 - The proxy will forward to this backend over HTTP.
 
 ## CORS
@@ -75,9 +79,7 @@ Configuration (in `src/app.js`):
 - Preflight (`OPTIONS`) handled globally: `app.options('*', cors(...))`
 
 To set a strict origin in production, configure:
-```
-FRONTEND_ORIGIN=https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3000
-```
+FRONTEND_ORIGIN=https://your-frontend.example.com
 
 Note: Credentials are disabled (`credentials: false`) since this API does not use cookies. If you add cookie-based auth, set `credentials: true` and update the allowed origin to a specific URL (not `*`).
 
@@ -90,9 +92,7 @@ Note: Credentials are disabled (`credentials: false`) since this API does not us
 Startup behavior:
 - By default, the server ensures DB readiness before binding to the port. If DB prep fails, the process exits.
 - You can allow HTTP server to start even if the DB is not ready (for network/proxy testing) by setting:
-  ```
   ALLOW_START_WITHOUT_DB=true
-  ```
   In this mode, health endpoints work and DB-dependent routes may return 503 until the DB becomes reachable (then the server flips to ready state automatically).
 
 On startup, the backend:
@@ -110,8 +110,9 @@ Quick checks:
 - Health (inside backend container):
   - HTTP: `curl -sI http://localhost:$PORT/ | head -n1`
 - Health (through proxy/public):
-  - `curl -sIk https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001/ | head -n1`
-- Notes POST (inside backend): `curl -s -X POST http://localhost:$PORT/notes -H 'Content-Type: application/json' --data '{"user_id":1,"title":"Test"}' -i`
+  - `curl -sIk https://your-domain.example.com/ | head -n1`
+- Notes POST (inside backend):
+  - `curl -s -X POST http://localhost:$PORT/notes -H 'Content-Type: application/json' --data '{"user_id":1,"title":"Test"}' -i`
   Note: Will return 503 if database is not ready (degraded mode) or 500 if a DB error occurs; this confirms route reachability and that DB is required.
 
 ## Endpoints (summary)
