@@ -35,10 +35,13 @@ function ensureEnum(value, allowed, fieldName) {
 const NotesService = {
   // PUBLIC_INTERFACE
   async create(data) {
-    // user_id is enforced by controller from JWT; ignore any provided user_id to prevent spoofing
-    if (!data || typeof data.user_id !== 'number') {
-      const err = new Error('Unauthorized: missing user context');
-      err.status = 401;
+    // Public mode: accept explicit user_id or default to 1 (demo user)
+    if (!data || (data.user_id === undefined || data.user_id === null)) {
+      data = { ...data, user_id: 1 };
+    }
+    if (typeof data.user_id !== 'number' || !Number.isFinite(data.user_id)) {
+      const err = new Error('Invalid or missing user_id');
+      err.status = 400;
       throw err;
     }
     if (!data.title || typeof data.title !== 'string' || !data.title.trim()) {
@@ -58,10 +61,6 @@ const NotesService = {
       recurrence_end_date: normalizeDateOrNull(data.recurrence_end_date, 'recurrence_end_date'),
     };
 
-    // Placeholder: future logic to schedule next occurrences or reminders
-    // if (payload.recurrence_pattern !== 'none') {
-    //   // Compute next occurrence date, enqueue reminder jobs, etc.
-    // }
     return Notes.create(payload);
   },
 

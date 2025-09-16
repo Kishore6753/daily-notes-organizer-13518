@@ -6,6 +6,7 @@ const notesController = require('../controllers/notes');
 const authController = require('../controllers/auth');
 const healthService = require('../services/health');
 const { checkConnection } = require('../db/bootstrap');
+// Keep middleware import for future use, but we will not enforce it on /notes routes
 const { auth } = require('../middleware');
 
 const router = express.Router();
@@ -353,9 +354,8 @@ router.delete('/tags/:id', tagsController.remove.bind(tagsController));
  * @swagger
  * /notes:
  *   get:
- *     security: [{ bearerAuth: [] }]
- *     summary: List/search notes
- *     description: Filter by tag_ids (comma-separated), status, priority, archived, q (search by title/content). user_id is derived from JWT.
+ *     summary: List/search notes (public)
+ *     description: Filter by tag_ids (comma-separated), status, priority, archived, q (search by title/content). Public access; no Authorization required.
  *     tags: [Notes]
  *     parameters:
  *       - in: query
@@ -389,10 +389,9 @@ router.delete('/tags/:id', tagsController.remove.bind(tagsController));
  *         description: Sort direction (default DESC)
  *     responses:
  *       200: { description: Notes list }
- *       401: { description: Unauthorized }
  *   post:
- *     security: [{ bearerAuth: [] }]
- *     summary: Create note
+ *     summary: Create note (public)
+ *     description: Publicly create a note. Provide user_id or it will default to demo user id 1 if available.
  *     tags: [Notes]
  *     requestBody:
  *       required: true
@@ -402,6 +401,7 @@ router.delete('/tags/:id', tagsController.remove.bind(tagsController));
  *             type: object
  *             required: [title]
  *             properties:
+ *               user_id: { type: integer, description: "Optional. If omitted, backend will use a default demo user (id 1 if exists)." }
  *               title: { type: string }
  *               content: { type: string }
  *               status: { type: string, enum: [not_started, in_progress, completed] }
@@ -414,17 +414,15 @@ router.delete('/tags/:id', tagsController.remove.bind(tagsController));
  *                 items: { type: integer }
  *     responses:
  *       201: { description: Created }
- *       401: { description: Unauthorized }
  */
-router.get('/notes', auth, notesController.list.bind(notesController));
-router.post('/notes', auth, notesController.create.bind(notesController));
+router.get('/notes', notesController.list.bind(notesController));
+router.post('/notes', notesController.create.bind(notesController));
 
 /**
  * @swagger
  * /notes/{id}:
  *   get:
- *     security: [{ bearerAuth: [] }]
- *     summary: Get note
+ *     summary: Get note (public)
  *     tags: [Notes]
  *     parameters:
  *       - in: path
@@ -433,11 +431,9 @@ router.post('/notes', auth, notesController.create.bind(notesController));
  *         schema: { type: integer }
  *     responses:
  *       200: { description: OK }
- *       401: { description: Unauthorized }
- *       403: { description: Forbidden }
+ *       404: { description: Not found }
  *   put:
- *     security: [{ bearerAuth: [] }]
- *     summary: Update note
+ *     summary: Update note (public)
  *     tags: [Notes]
  *     parameters:
  *       - in: path
@@ -464,11 +460,9 @@ router.post('/notes', auth, notesController.create.bind(notesController));
  *                 items: { type: integer }
  *     responses:
  *       200: { description: Updated }
- *       401: { description: Unauthorized }
- *       403: { description: Forbidden }
+ *       404: { description: Not found }
  *   delete:
- *     security: [{ bearerAuth: [] }]
- *     summary: Delete note
+ *     summary: Delete note (public)
  *     tags: [Notes]
  *     parameters:
  *       - in: path
@@ -477,11 +471,10 @@ router.post('/notes', auth, notesController.create.bind(notesController));
  *         schema: { type: integer }
  *     responses:
  *       200: { description: Deleted }
- *       401: { description: Unauthorized }
- *       403: { description: Forbidden }
+ *       404: { description: Not found }
  */
-router.get('/notes/:id', auth, notesController.get.bind(notesController));
-router.put('/notes/:id', auth, notesController.update.bind(notesController));
-router.delete('/notes/:id', auth, notesController.remove.bind(notesController));
+router.get('/notes/:id', notesController.get.bind(notesController));
+router.put('/notes/:id', notesController.update.bind(notesController));
+router.delete('/notes/:id', notesController.remove.bind(notesController));
 
 module.exports = router;
