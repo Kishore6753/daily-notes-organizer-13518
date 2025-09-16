@@ -87,6 +87,14 @@ Note: Credentials are disabled (`credentials: false`) since this API does not us
 - Dev: `npm run dev` (nodemon)
 - Prod: `npm start`
 
+Startup behavior:
+- By default, the server ensures DB readiness before binding to the port. If DB prep fails, the process exits.
+- You can allow HTTP server to start even if the DB is not ready (for network/proxy testing) by setting:
+  ```
+  ALLOW_START_WITHOUT_DB=true
+  ```
+  In this mode, health endpoints work and DB-dependent routes may return 503 until the DB becomes reachable (then the server flips to ready state automatically).
+
 On startup, the backend:
 - Validates DB env vars,
 - Connects to MySQL,
@@ -97,12 +105,14 @@ You can verify DB connectivity via:
 - GET `/db/health` -> 200 OK when DB is reachable
 
 Quick checks:
+- Start (degraded mode for HTTP-only/proxy testing):
+  - `PORT=3001 HOST=0.0.0.0 ALLOW_START_WITHOUT_DB=true npm start`
 - Health (inside backend container):
   - HTTP: `curl -sI http://localhost:$PORT/ | head -n1`
 - Health (through proxy/public):
   - `curl -sIk https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001/ | head -n1`
 - Notes POST (inside backend): `curl -s -X POST http://localhost:$PORT/notes -H 'Content-Type: application/json' --data '{"user_id":1,"title":"Test"}' -i`
-  Note: Will return 500 if the database is not configured; this confirms route reachability and that DB is required.
+  Note: Will return 503 if database is not ready (degraded mode) or 500 if a DB error occurs; this confirms route reachability and that DB is required.
 
 ## Endpoints (summary)
 
