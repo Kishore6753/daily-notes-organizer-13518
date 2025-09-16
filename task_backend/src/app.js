@@ -24,9 +24,10 @@ const DEFAULT_FRONTEND = 'https://vscode-internal-36885-beta.beta01.cloud.kavia.
 const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || DEFAULT_FRONTEND;
 
 // Build allowed origins list (unique, non-empty strings)
+// Strict CORS: only permit the configured frontend origin by default
 const allowedOrigins = Array.from(
   new Set(
-    [FRONTEND_ORIGIN, DEFAULT_FRONTEND]
+    [FRONTEND_ORIGIN]
       .filter(Boolean)
   )
 );
