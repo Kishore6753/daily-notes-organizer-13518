@@ -3,7 +3,7 @@
  * This is a minimal integration example that can be wired into the app router.
  */
 import React, { useEffect, useState } from 'react';
-import { fetchNotes, createNote } from '../api/client';
+import { fetchNotes, createNote, isAuthenticated, login } from '../api/client';
 import PrioritySelector from '../components/PrioritySelector';
 import PriorityChip from '../components/PriorityChip';
 
@@ -51,7 +51,13 @@ export default function NotesList() {
     e.preventDefault();
     if (!title.trim()) return;
     try {
-      await createNote({ user_id: 1, title: title.trim(), priority: newPriority });
+      // Optional demo: if not authenticated, you could attempt a demo login
+      if (!isAuthenticated()) {
+        // Replace with your real auth flow; this is only a safeguard for the demo page.
+        // await login({ email: 'demo@example.com', password: 'demopass' });
+        throw new Error('Please login first to create a note.');
+      }
+      await createNote({ title: title.trim(), priority: newPriority });
       setTitle('');
       setNewPriority('low');
       load();
