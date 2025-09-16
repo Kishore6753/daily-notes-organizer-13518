@@ -1,0 +1,23 @@
+Command:
+curl -k -X POST https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001/notes -H "Content-Type: application/json" -d '{"note": "Hello from curl"}'
+
+Timestamp: 2025-09-16T07:47:46Z
+
+Raw Output:
+HTTP/2 502 
+date: Tue, 16 Sep 2025 07:47:46 GMT
+content-type: text/html
+content-length: 157
+server: nginx/1.29.1
+
+<html>
+<head><title>502 Bad Gateway</title></head>
+<body>
+<center><h1>502 Bad Gateway</h1></center>
+<hr><center>nginx/1.29.1</center>
+</body>
+</html>
+
+Notes:
+- 502 Bad Gateway from nginx indicates upstream backend service on port 3001 was not reachable or failed.
+- Next steps: verify backend container is running and listening, check DB env vars and TLS, and test internal health and routes.
