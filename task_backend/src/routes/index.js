@@ -3,6 +3,7 @@ const healthController = require('../controllers/health');
 const usersController = require('../controllers/users');
 const tagsController = require('../controllers/tags');
 const notesController = require('../controllers/notes');
+const { checkConnection } = require('../db/bootstrap');
 
 const router = express.Router();
 
@@ -47,6 +48,30 @@ const router = express.Router();
  *                   example: development
  */
 router.get('/', healthController.check.bind(healthController));
+
+/**
+ * @swagger
+ * /db/health:
+ *   get:
+ *     summary: Database connectivity health
+ *     tags: [Health]
+ *     responses:
+ *       200:
+ *         description: Database is reachable
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 ok: { type: boolean }
+ *       500:
+ *         description: Database error
+ */
+router.get('/db/health', async (req, res) => {
+  const result = await checkConnection();
+  if (result.ok) return res.status(200).json({ ok: true });
+  return res.status(500).json({ ok: false, error: result.error });
+});
 
 /**
  * @swagger

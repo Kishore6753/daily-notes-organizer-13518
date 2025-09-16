@@ -47,7 +47,11 @@ function buildConfigFromEnv() {
   };
 }
 
-const pool = mysql.createPool(buildConfigFromEnv());
+const pool = mysql.createPool({
+  ...buildConfigFromEnv(),
+  // Guardrails: enable connectTimeout if provided (ms)
+  connectTimeout: Number(process.env.MYSQL_CONNECT_TIMEOUT || 10000),
+});
 
 /**
  * Executes a query with parameters using the pool. Wraps errors and logs details in development.

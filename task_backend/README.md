@@ -47,6 +47,15 @@ Note: Credentials are disabled (`credentials: false`) since this API does not us
 - Dev: `npm run dev` (nodemon)
 - Prod: `npm start`
 
+On startup, the backend:
+- Validates DB env vars,
+- Connects to MySQL,
+- Ensures the schema exists (creates users, tags, notes, note_tags if missing),
+- Seeds one demo user if no users exist (so you can POST /notes without creating a user first).
+
+You can verify DB connectivity via:
+- GET `/db/health` -> 200 OK when DB is reachable
+
 The server binds to `HOST` and `PORT` and listens over HTTP at `http://HOST:PORT`.
 
 Important: In the cloud environment, public access is via HTTPS with TLS terminated by the platform’s proxy. This means:
