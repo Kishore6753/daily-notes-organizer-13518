@@ -4,7 +4,12 @@ const routes = require('./routes');
 const swaggerUi = require('swagger-ui-express');
 const swaggerSpec = require('../swagger');
 
-// Initialize express app
+/**
+ * Note on protocol:
+ * - This Express app runs over HTTP internally.
+ * - In the deployed environment, HTTPS is terminated by an upstream proxy/load balancer.
+ * - From browsers, always call the API over HTTPS on the public URL/port.
+ */
 const app = express();
 
 /**

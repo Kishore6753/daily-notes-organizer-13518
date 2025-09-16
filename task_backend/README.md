@@ -47,7 +47,22 @@ Note: Credentials are disabled (`credentials: false`) since this API does not us
 - Dev: `npm run dev` (nodemon)
 - Prod: `npm start`
 
-The server binds to `HOST` and `PORT` and is reachable at `http://HOST:PORT`.
+The server binds to `HOST` and `PORT` and listens over HTTP at `http://HOST:PORT`.
+
+Important: In the cloud environment, public access is via HTTPS with TLS terminated by the platform’s proxy. This means:
+- Internally (from within the backend/container network), use HTTP, e.g., `http://localhost:3001`.
+- Externally (from the browser/frontend), use HTTPS, e.g., `https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001`.
+
+Frontend integration:
+- Ensure the frontend API base URL uses HTTPS, not HTTP. Example:
+  API_BASE_URL=https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001
+- Using `http://...:3001` from a HTTPS page will be blocked by the browser as mixed content and show “Failed to fetch”.
+
+Quick checks:
+- Health (inside backend container): `curl -sI http://localhost:$PORT/ | head -n1` -> `HTTP/1.1 200 OK`
+- Health (public): `curl -sIk https://vscode-internal-36885-beta.beta01.cloud.kavia.ai:3001/ | head -n1` -> `HTTP/2 200`
+- Notes POST (inside backend): `curl -s -X POST http://localhost:$PORT/notes -H 'Content-Type: application/json' --data '{"user_id":1,"title":"Test"}' -i`
+  Note: Will return 500 if the database is not configured; this confirms route reachability and that DB is required.
 
 ## Endpoints (summary)
 
