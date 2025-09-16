@@ -3,6 +3,8 @@ const http = require('http');
 const app = require('./app');
 const { ensureDatabaseReady, checkConnection } = require('./db/bootstrap');
 
+const crypto = require('crypto');
+
 // Networking configuration
 const PORT = Number(process.env.PORT || 3001);
 const HOST = process.env.HOST || '0.0.0.0';
@@ -10,6 +12,31 @@ const HOST = process.env.HOST || '0.0.0.0';
 // Allow starting server without DB for environments where DB isn't yet ready.
 // When enabled, server starts and routes can check DB health and return 503 accordingly.
 const ALLOW_START_WITHOUT_DB = String(process.env.ALLOW_START_WITHOUT_DB || '').toLowerCase() === 'true';
+
+/**
+ * Emit a concise summary of current runtime configuration for diagnostics.
+ */
+function logStartupSummary() {
+  const env = process.env.NODE_ENV || 'development';
+  const hasJwt = !!process.env.JWT_SECRET;
+  const mysqlSource = process.env.MYSQL_URL ? 'MYSQL_URL' : 'parts';
+  const mysqlVars = {
+    MYSQL_URL: !!process.env.MYSQL_URL,
+    MYSQL_HOST: !!process.env.MYSQL_HOST,
+    MYSQL_PORT: process.env.MYSQL_PORT !== undefined,
+    MYSQL_USER: process.env.MYSQL_USER !== undefined,
+    MYSQL_PASSWORD: process.env.MYSQL_PASSWORD !== undefined,
+    MYSQL_DB: !!process.env.MYSQL_DB || !!process.env.MYSQL_DATABASE,
+  };
+
+  console.log('[Init] Runtime summary:');
+  console.log(`       NODE_ENV=${env}`);
+  console.log(`       HOST=${HOST} PORT=${PORT}`);
+  console.log(`       ALLOW_START_WITHOUT_DB=${ALLOW_START_WITHOUT_DB}`);
+  console.log(`       JWT_SECRET: ${hasJwt ? 'present' : 'missing'}`);
+  console.log(`       MySQL config source: ${mysqlSource}`);
+  console.log('       MySQL vars presence:', mysqlVars);
+}
 
 /**
  * Ensure JWT secret exists; if missing in development, generate one and log it.
@@ -20,17 +47,40 @@ function ensureJwtSecret() {
   let secret = process.env.JWT_SECRET;
   if (!secret) {
     if (env === 'production') {
-      console.error('[Config] JWT_SECRET is missing and NODE_ENV=production. /login will fail. Aborting startup.');
+      console.error('[Config] JWT_SECRET is missing and NODE_ENV=production. Aborting startup.');
       process.exit(1);
     }
     // Generate a random dev secret
-    const suggested = `dev-${require('crypto').randomBytes(24).toString('hex')}`;
+    const suggested = `dev-${crypto.randomBytes(24).toString('hex')}`;
     process.env.JWT_SECRET = suggested;
     secret = suggested;
     console.warn('[Config] JWT_SECRET was not set. Generated a development secret automatically.');
-    console.warn('[Config] NOTE: Set JWT_SECRET explicitly in production to avoid invalidating tokens on restarts.');
+    console.warn('[Config] NOTE: Set JWT_SECRET explicitly in production to keep tokens stable across restarts.');
+  } else if (String(secret).startsWith('dev-')) {
+    console.warn('[Config] Using a development-style JWT secret. Do not use dev secrets in production.');
   }
   return secret;
+}
+
+/**
+ * Check presence of MySQL environment variables and emit actionable warnings.
+ */
+function checkMysqlEnv() {
+  const missing = [];
+  if (!process.env.MYSQL_URL) {
+    if (!process.env.MYSQL_HOST) missing.push('MYSQL_HOST');
+    if (process.env.MYSQL_PORT === undefined) missing.push('MYSQL_PORT');
+    if (process.env.MYSQL_USER === undefined) missing.push('MYSQL_USER');
+    if (process.env.MYSQL_PASSWORD === undefined) missing.push('MYSQL_PASSWORD');
+    if (!process.env.MYSQL_DB && !process.env.MYSQL_DATABASE) missing.push('MYSQL_DB|MYSQL_DATABASE');
+  }
+  if (missing.length) {
+    console.warn('[Config] MySQL environment appears incomplete:', missing.join(', '));
+    console.warn('[Config] Provide MYSQL_URL or discrete MYSQL_* vars. See task_backend/README.md and .env.example guidance.');
+  } else {
+    console.log('[Config] MySQL environment variables detected.');
+  }
+  return missing;
 }
 
 /**
@@ -38,28 +88,20 @@ function ensureJwtSecret() {
  * TLS is intentionally NOT handled here; HTTPS must be terminated by a reverse proxy (nginx/traefik/caddy).
  */
 async function start() {
+  logStartupSummary();
+
   // Validate/generate JWT secret first to avoid /login runtime failures
   const jwtSecret = ensureJwtSecret();
 
-  // Log DB env presence to help diagnose failures
-  const hasMysqlUrl = !!process.env.MYSQL_URL;
-  const hasParts =
-    !!process.env.MYSQL_HOST &&
-    !!(process.env.MYSQL_DB || process.env.MYSQL_DATABASE) &&
-    process.env.MYSQL_USER !== undefined &&
-    process.env.MYSQL_PORT !== undefined;
-
-  if (!hasMysqlUrl && !hasParts) {
-    console.warn('[Config] MySQL configuration appears incomplete. Set MYSQL_URL or MYSQL_HOST/PORT/USER/PASSWORD/DB.');
-    console.warn('[Config] Backend will likely fail for DB-dependent routes (e.g., /login, /notes). See task_backend/.env.example.');
-  }
+  // Check MySQL env presence
+  const mysqlMissing = checkMysqlEnv();
 
   let dbReady = false;
   try {
     console.log('[Server] Ensuring database is ready (env, connectivity, schema)...');
     await ensureDatabaseReady();
     dbReady = true;
-    console.log('[Server] Database ready. Starting HTTP server...');
+    console.log('[Server] Database ready.');
   } catch (e) {
     console.error('[Server] Failed to prepare database:', e && e.stack ? e.stack : e);
     if (!ALLOW_START_WITHOUT_DB) {
@@ -74,6 +116,11 @@ async function start() {
   // Expose flags for downstream middlewares/health
   app.locals.dbReady = dbReady;
   app.locals.jwtReady = !!jwtSecret;
+  app.locals.configSummary = {
+    mysqlMissing,
+    hasJwt: !!jwtSecret,
+    allowStartWithoutDb: ALLOW_START_WITHOUT_DB,
+  };
 
   // Middleware to surface degraded DB state with 503 for non-health routes
   app.use(async (req, res, next) => {
@@ -89,6 +136,7 @@ async function start() {
           });
         }
         // DB became available during runtime
+        console.log('[Server] Database connectivity restored; resuming normal operation.');
         app.locals.dbReady = true;
       }
     }

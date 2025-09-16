@@ -12,10 +12,12 @@ const swaggerSpec = require('../swagger');
  */
 const app = express();
 
-// Early config diagnostics (defense-in-depth; server.js already ensures secret in dev)
+/**
+ * Early config diagnostics (defense-in-depth).
+ * server.js enforces/generates JWT_SECRET as needed for development.
+ */
 if (!process.env.JWT_SECRET) {
-  // Avoid crashing here; server.js controls strictness based on NODE_ENV.
-  console.warn('[Config] JWT_SECRET is not set at app init. /login and authenticated routes will fail until configured.');
+  console.warn('[Config] JWT_SECRET not present at app init (server.js may generate one for development).');
 }
 
 /**

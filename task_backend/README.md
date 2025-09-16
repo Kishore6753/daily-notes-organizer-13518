@@ -8,7 +8,7 @@ Quick links:
 
 ## Environment Variables
 
-Provided by orchestrator; do not hardcode in code. Create a `.env` locally if needed.
+Provided by orchestrator; do not hardcode in code. Create a `.env` locally if needed (see `.env.example`).
 
 Database:
 - MYSQL_URL or individual:
@@ -94,14 +94,17 @@ Note: Credentials are disabled (`credentials: false`) since this API does not us
 - Prod: `npm start`
 
 Startup behavior:
+- Validates required environment variables for JWT and MySQL.
+  - If JWT_SECRET is missing in development, a temporary dev secret is auto-generated and a warning is logged.
+  - In production, missing JWT_SECRET aborts startup.
 - By default, the server ensures DB readiness before binding to the port. If DB prep fails, the process exits.
 - You can allow HTTP server to start even if the DB is not ready (for network/proxy testing) by setting:
   ALLOW_START_WITHOUT_DB=true
   In this mode, health endpoints work and DB-dependent routes may return 503 until the DB becomes reachable (then the server flips to ready state automatically).
 
 On startup, the backend:
-- Validates DB env vars,
-- Connects to MySQL,
+- Validates MySQL env vars and logs any gaps (use `.env.example` as reference),
+- Connects to MySQL (connectivity check),
 - Ensures the schema exists (creates users, tags, notes, note_tags if missing),
 - Seeds one demo user if no users exist (so you can POST /notes without creating a user first).
 
