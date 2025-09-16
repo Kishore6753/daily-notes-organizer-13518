@@ -265,6 +265,14 @@ router.delete('/tags/:id', tagsController.remove.bind(tagsController));
  *       - in: query
  *         name: pageSize
  *         schema: { type: integer }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string, enum: [priority, updated_at, created_at] }
+ *         description: Sort field (default updated_at)
+ *       - in: query
+ *         name: sortDir
+ *         schema: { type: string, enum: [ASC, DESC] }
+ *         description: Sort direction (default DESC)
  *     responses:
  *       200: { description: Notes list }
  *   post:

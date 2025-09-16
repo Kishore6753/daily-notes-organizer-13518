@@ -62,6 +62,26 @@ const NotesService = {
     if (query.page) opts.page = Number(query.page);
     if (query.pageSize) opts.pageSize = Number(query.pageSize);
 
+    // Sorting by priority/updated_at/created_at and direction
+    if (query.sortBy) {
+      const sortBy = String(query.sortBy);
+      if (!['priority', 'updated_at', 'created_at'].includes(sortBy)) {
+        const err = new Error('Invalid sortBy. Allowed: priority, updated_at, created_at');
+        err.status = 400;
+        throw err;
+      }
+      opts.sortBy = sortBy;
+    }
+    if (query.sortDir) {
+      const dir = String(query.sortDir).toUpperCase();
+      if (!['ASC', 'DESC'].includes(dir)) {
+        const err = new Error('Invalid sortDir. Allowed: ASC, DESC');
+        err.status = 400;
+        throw err;
+      }
+      opts.sortDir = dir;
+    }
+
     return Notes.list(opts);
   },
 

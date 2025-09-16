@@ -122,12 +122,24 @@ const NotesModel = {
     }
 
     const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+    // Sorting: allow sortBy=priority|updated_at|created_at and sortDir=asc|desc
+    const allowedSortBy = new Set(['priority', 'updated_at', 'created_at']);
+    const sortBy = allowedSortBy.has(opts.sortBy) ? opts.sortBy : 'updated_at';
+    const sortDir = String(opts.sortDir || 'DESC').toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    // Priority ordering: enforce explicit order high > moderate > low when sorting by priority
+    const orderClause =
+      sortBy === 'priority'
+        ? `ORDER BY FIELD(n.priority, 'high','moderate','low') ${sortDir}, n.updated_at DESC, n.created_at DESC`
+        : `ORDER BY n.${sortBy} ${sortDir}, n.created_at DESC`;
+
     const sql = `
       SELECT n.id, n.user_id, n.title, n.content, n.status, n.priority, n.archived, n.created_at, n.updated_at
       FROM notes n
       ${join}
       ${whereSql}
-      ORDER BY n.updated_at DESC, n.created_at DESC
+      ${orderClause}
       LIMIT ? OFFSET ?
     `;
     const { rows } = await query(sql, [...params, pageSize, offset]);

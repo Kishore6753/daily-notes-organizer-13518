@@ -2,6 +2,14 @@
 
 This frontend talks to the backend API through a reverse proxy/cloud that terminates HTTPS. To avoid mixed content and 502s, follow these rules:
 
+Priority support
+- The backend supports a priority field for notes: low | moderate | high.
+- Query params sortBy=priority and sortDir=ASC|DESC allow sorting by priority order (high > moderate > low).
+- In this frontend, see src/pages/NotesList.jsx for a minimal example with:
+  - Priority filter dropdown
+  - Sort controls
+  - Priority selector on create form
+
 Core rules
 1) Backend (Node/Express) runs over plain HTTP on 0.0.0.0:3001. No HTTPS inside Node.
 2) Public HTTPS endpoint is at the reverse proxy/cloud. The proxy forwards to the backend over HTTP.
